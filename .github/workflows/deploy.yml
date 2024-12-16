@@ -2,12 +2,38 @@ name: Deploy
 
 on: [push]
 
+env:
+  BUN_VERSION: "1.1.32"
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install packages and build
+        run: |
+          bun install
+          bun run build
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: static
+          path: .
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: static
 
       - name: Copy respository contents
         uses: appleboy/scp-action@master
@@ -16,5 +42,5 @@ jobs:
           username: ${{ secrets.USERNAME }}
           port: ${{ secrets.PORT }}
           key: ${{ secrets.SSHKEY }}
-          source: "."
+          source: "./dist"
           target: "/data/www/portfolio"
